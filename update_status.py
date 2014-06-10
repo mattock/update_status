@@ -67,22 +67,23 @@ class Update_status():
         # apt-show-versions output.
         r_full_version = r_version+"."+r_build
 
-        # apt-show-versions can produce two types of output, both of which we 
+        # apt-show-versions can produce several types of output, all of which we 
         # need to be able to parse:
         #
         # linux-image-virtual/precise upgradeable from 3.2.0.63.75 to 3.2.0.64.76
         # linux-image-virtual/precise uptodate 3.2.0.64.76
+        # linux-image-virtual not installed
         #
         asv_output = subprocess.check_output(['apt-show-versions', '-p', kernel_package], shell=False)
 
-        if "upgradeable" in asv_output:
-            i_full_version = asv_output.split(' ')[3]
-        elif "uptodate" in asv_output:
-            i_full_version = asv_output.split(' ')[2]
+        # It's not always possible to determine the kernel metapackage name from 
+        # uname output. This can happen when using backported kernels,
+        if "not installed" in asv_output:
+            return None
 
         # This only checks if the running kernel differs from the installed 
         # kernel, not whether it's older or newer.
-        if not r_full_version in i_full_version:
+        if not r_full_version in asv_output:
             return False
         else:
             return True
@@ -112,7 +113,9 @@ class Update_status():
         """Return a string telling if the running kernel is different from the 
            installed kernel."""
 
-        if self.running_installed_kernel:
+        if self.running_installed_kernel is None:
+            return "Unknown"
+        elif self.running_installed_kernel:
             return "Yes"
         else:
             return "No"
