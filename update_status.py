@@ -67,30 +67,25 @@ class Update_status():
         # apt-show-versions output.
         r_full_version = r_version+"."+r_build
 
-        # Check if kernel is upgradable. As apt-show-versions -u -p <package> 
-        # can in some cases produce unwanted output, we need to redirect it's 
-        # output to /dev/null.
-        devnull = open('/dev/null','w')
-        check_if_upgradable_retval = subprocess.call(['apt-show-versions', '-u', '-p', kernel_package], shell=False, stdout=devnull)
-        devnull.close()
+        # apt-show-versions can produce two types of output, both of which we 
+        # need to be able to parse:
+        #
+        # linux-image-virtual/precise upgradeable from 3.2.0.63.75 to 3.2.0.64.76
+        # linux-image-virtual/precise uptodate 3.2.0.64.76
+        #
+        asv_output = subprocess.check_output(['apt-show-versions', '-p', kernel_package], shell=False)
 
-        # Return value of 2 from apt-show-versions means that there are no 
-        # pending kernel updates.
-        if check_if_upgradable_retval == 2:
+        if "upgradeable" in asv_output:
+            i_full_version = asv_output.split(' ')[3]
+        elif "uptodate" in asv_output:
+            i_full_version = asv_output.split(' ')[2]
 
-            asv_output = subprocess.check_output(['apt-show-versions', '-p', kernel_package], shell=False)
-
-            # This only checks if the running kernel differs from the installed 
-            # kernel, not whether it's older or newer.
-            if not r_full_version in asv_output:
-                return False
-            else:
-                return True
-
-        # No pending kernel updates
+        # This only checks if the running kernel differs from the installed 
+        # kernel, not whether it's older or newer.
+        if not r_full_version in i_full_version:
+            return False
         else:
             return True
-
 
     def upgradable_packages_to_str(self):
         """Return a string presentation of all upgradable packages"""
@@ -131,7 +126,7 @@ class Update_status():
 
     def csv(self):
         """CSV representation of the system update status"""
-        return self.kernel_upgradable_to_str()+","+self.update_count_to_str()
+        return self.kernel_upgradable_to_str()+","+self.update_count_to_str()+","+self.running_installed_kernel_to_str()
 
     def __str__(self):
         """Detailed string representation of the system update status"""
