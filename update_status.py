@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import apt, re
+import apt, re, subprocess
 
 class Update_status():
     """Class that models that update status of a system"""
@@ -14,7 +14,7 @@ class Update_status():
 
         self.upgradable_packages = self.get_upgradable_packages()
         self.kernel_upgradable = self.is_kernel_upgradable()
-        self.reboot_required = False
+        self.running_installed_kernel = self.is_running_installed_kernel()
 
     def update_apt_cache(self):
         """Update apt cache. This only affects the underlying system state, not the object state."""
@@ -50,6 +50,48 @@ class Update_status():
 
         return kernel_upgradable
 
+    def is_running_installed_kernel(self):
+        """Determine if the running kernel is different from the installed 
+           kernel"""
+
+        # Extract running kernel version, build and type from uname output
+        uname_output = subprocess.check_output(['uname', '-r'], shell=False)
+        r_version = uname_output.split('-')[0].rstrip('\n')
+        r_build = uname_output.split('-')[1].rstrip('\n')
+        type = uname_output.split('-')[2].rstrip('\n')
+
+        # Construct the kernel package name for the running kernel
+        kernel_package = 'linux-image-{type}'.format(type=type)
+
+        # Convert uname-produced version info into format compatible with 
+        # apt-show-versions output.
+        r_full_version = r_version+"."+r_build
+
+        # Check if kernel is upgradable. As apt-show-versions -u -p <package> 
+        # can in some cases produce unwanted output, we need to redirect it's 
+        # output to /dev/null.
+        devnull = open('/dev/null','w')
+        check_if_upgradable_retval = subprocess.call(['apt-show-versions', '-u', '-p', kernel_package], shell=False, stdout=devnull)
+        devnull.close()
+
+        # Return value of 2 from apt-show-versions means that there are no 
+        # pending kernel updates.
+        if check_if_upgradable_retval == 2:
+
+            asv_output = subprocess.check_output(['apt-show-versions', '-p', kernel_package], shell=False)
+
+            # This only checks if the running kernel differs from the installed 
+            # kernel, not whether it's older or newer.
+            if not r_full_version in asv_output:
+                return False
+            else:
+                return True
+
+        # No pending kernel updates
+        else:
+            return True
+
+
     def upgradable_packages_to_str(self):
         """Return a string presentation of all upgradable packages"""
 
@@ -71,10 +113,21 @@ class Update_status():
         else:
             return "No"
 
+    def running_installed_kernel_to_str(self):
+        """Return a string telling if the running kernel is different from the 
+           installed kernel."""
+
+        if self.running_installed_kernel:
+            return "Yes"
+        else:
+            return "No"
+
     def oneline(self):
         """One-line representation of the system update status"""
 
-        return "Kernel upgradable: "+self.kernel_upgradable_to_str()+"\tUpgradable packages: "+self.update_count_to_str()
+        return "Kernel upgradable: "+self.kernel_upgradable_to_str()+\
+             "\tUpgradable packages: "+self.update_count_to_str()+\
+             "\tRunning installed kernel: "+self.running_installed_kernel_to_str()
 
     def csv(self):
         """CSV representation of the system update status"""
