@@ -147,7 +147,7 @@ def main():
 
     # Parse command-line arguments
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hcr")
+        opts, args = getopt.getopt(sys.argv[1:], "hcrp")
     except getopt.GetoptError:
         Usage()
         sys.exit(1)
@@ -163,11 +163,15 @@ def main():
             output = "csv"
         if o in ("-r"):
             output = "readable"
+        if o in ("-p"):
+            output = "pending"
 
     update_status = Update_status()
 
     if output == "csv":
         print update_status.to_csv()
+    elif output == "pending":
+        print update_status.pending_updates_to_str()
     else:
         print update_status
 
