@@ -37,4 +37,4 @@ to the target host before running it.
 TODO
 ====
 
-- Add an option parser
+- Add support for displaying a list of packages to be upgraded

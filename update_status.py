@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import apt, re, subprocess, os
+import apt, re, subprocess, os, getopt, sys
 
 class Update_status():
     """Class that models that update status of a system"""
@@ -113,6 +113,16 @@ class Update_status():
         else:
             return "No"
 
+    def to_csv(self):
+        """Return a CSV string representation of this object"""
+
+        s = "|"
+        return s + self.kernel_upgradable_to_str()+\
+               s + self.pending_update_count_to_str()+\
+               s + self.pending_security_update_count_to_str()+\
+               s + self.need_restart_to_str()+\
+               s
+
     def __str__(self):
         """Detailed string representation of the system update status"""
 
@@ -121,10 +131,45 @@ class Update_status():
              "\tPending security updates: "+self.pending_security_update_count_to_str() +\
              "\tNeeds restart: "+self.need_restart_to_str()
 
+def Usage():
+    """Show usage information"""
+    print
+    print "Usage: update_status.py [options]"
+    print
+    print "Options:"
+    print "  -h    Print this help message"
+    print "  -c    CSV output"
+    print "  -r    Human-readable output (default)"
+    print
+
 def main():
     """The default action is to print a human-readable, one-line report system's update status"""
+
+    # Parse command-line arguments
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hcr")
+    except getopt.GetoptError:
+        Usage()
+        sys.exit(1)
+
+    output = "readable"
+
+    # If both -c and -r are defined, the value of output depends on which came 
+    # last.
+    for o, a in opts:
+        if o in ("-h"):
+            Usage()
+        if o in ("-c"):
+            output = "csv"
+        if o in ("-r"):
+            output = "readable"
+
     update_status = Update_status()
-    print update_status
+
+    if output == "csv":
+        print update_status.to_csv()
+    else:
+        print update_status
 
 if __name__ == '__main__':
     main()
